@@ -1,0 +1,31 @@
+[project]
+name = "roam-research-cli"
+version = "0.1.0"
+description = "Fast, read-only Roam Research search from the terminal"
+readme = "README.md"
+requires-python = ">=3.11"
+dependencies = []
+license = "MIT"
+license-files = ["LICENSE"]
+keywords = ["roam-research", "cli", "search", "productivity"]
+classifiers = [
+    "Development Status :: 3 - Alpha",
+    "Environment :: Console",
+    "Operating System :: MacOS",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
+]
+
+[project.scripts]
+rr = "roam_research_cli.cli:main"
+
+[project.urls]
+Homepage = "https://github.com/Grynn/roam-research-cli"
+Repository = "https://github.com/Grynn/roam-research-cli"
+Issues = "https://github.com/Grynn/roam-research-cli/issues"
+
+[build-system]
+requires = ["uv_build>=0.12.1,<0.13.0"]
+build-backend = "uv_build"
