@@ -34,23 +34,33 @@ uv tool upgrade roam-research-cli
 
 ## Configure
 
-`rr` shares `~/.roam-tools.json` with Roam's official tools. The easiest
-setup is to use the official connection flow:
-
 ```bash
-npx @roam-research/roam-cli connect
+rr setup
 ```
 
-Choose read-only access when prompted. Alternatively, create a token in
-Roam Desktop → Settings → Graph → Local API Tokens and use the documented
-`~/.roam-tools.json` format.
+`rr setup` walks through it: it checks that Roam Desktop is running, shows
+where to create a read-only token (**Roam Desktop → Settings → Graph → Local
+API Tokens → New Token**), asks for your graph name and token, verifies them
+against the live API, and saves them to `~/.roam-tools.json` with `0600`
+permissions. Run it again to add another graph or replace a token.
+
+It can also hand off to Roam's official connection flow, which writes the same
+config file:
+
+```bash
+npx @roam-research/roam-mcp connect --access-level read-only
+```
 
 For ephemeral use, `RR_GRAPH` and `RR_TOKEN` override the config file.
 `RR_GRAPH` may be either a configured graph name or nickname.
 
+Full walkthrough, config file format, and troubleshooting:
+[docs/SETUP.md](docs/SETUP.md).
+
 ## Usage
 
 ```bash
+rr setup
 rr knowledge graph
 rr search "knowledge graph" --limit 10
 rr search "project ideas" --pages-only

@@ -17,8 +17,9 @@ from urllib.parse import quote
 
 from . import __version__
 from .live import TOKENS_FILE, Hit, LiveUnavailable, live_search
+from .setup import DOCS_URL, cmd_setup
 
-SUBCOMMANDS = {"search", "status", "open"}
+SUBCOMMANDS = {"search", "status", "open", "setup"}
 
 
 def deep_link(graph: str, uid: str) -> str:
@@ -49,8 +50,9 @@ def default_graph_name() -> str:
         return graphs[0]["name"]
     if not graphs:
         raise SystemExit(
-            f"rr: no graphs configured in {TOKENS_FILE}; run the official "
-            "Roam CLI connection flow or set RR_GRAPH and RR_TOKEN"
+            f"rr: no graphs configured in {TOKENS_FILE}\n"
+            "    run `rr setup` to connect one, or set RR_GRAPH and RR_TOKEN\n"
+            f"    setup guide: {DOCS_URL}"
         )
     labels = [graph.get("nickname") or graph["name"] for graph in graphs]
     raise SystemExit(
@@ -160,6 +162,25 @@ def parser() -> argparse.ArgumentParser:
     open_command.add_argument("uid")
     open_command.add_argument("--graph", help="configured graph name or nickname")
     open_command.set_defaults(fn=cmd_open)
+
+    setup = subcommands.add_parser(
+        "setup",
+        help="connect a graph (interactive walkthrough)",
+        description=(
+            "Walk through connecting a Roam graph: check Roam Desktop, create a "
+            f"read-only local API token, verify it, and save it to {TOKENS_FILE}. "
+            f"See {DOCS_URL}."
+        ),
+    )
+    setup.add_argument("--graph", help="graph name, as it appears in the Roam URL")
+    setup.add_argument("--nickname", help="short name to refer to the graph by")
+    setup.add_argument("--token", help="local API token (skips the prompts)")
+    setup.add_argument(
+        "--force",
+        action="store_true",
+        help="save the token even if the local API check fails",
+    )
+    setup.set_defaults(fn=cmd_setup)
     return argument_parser
 
 

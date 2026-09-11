@@ -2,6 +2,7 @@ import argparse
 import io
 import json
 import os
+import sys
 import tempfile
 import unittest
 from contextlib import redirect_stdout
@@ -68,6 +69,30 @@ class CLITests(unittest.TestCase):
             payload["results"][0]["url"],
             "roam://#/app/example/page/abc123",
         )
+
+    def test_missing_config_points_at_rr_setup(self):
+        with tempfile.TemporaryDirectory() as directory:
+            missing = Path(directory) / "absent.json"
+            environment = {
+                key: value
+                for key, value in os.environ.items()
+                if key != "RR_GRAPH"
+            }
+            with (
+                patch.object(cli, "TOKENS_FILE", missing),
+                patch.dict(os.environ, environment, clear=True),
+                self.assertRaises(SystemExit) as raised,
+            ):
+                cli.default_graph_name()
+        message = str(raised.exception)
+        self.assertIn("rr setup", message)
+        self.assertIn(cli.DOCS_URL, message)
+
+    def test_setup_is_not_treated_as_a_search_query(self):
+        with patch.object(cli, "cmd_setup") as command:
+            with patch.object(sys, "argv", ["rr", "setup", "--graph", "example"]):
+                cli.main()
+        self.assertEqual(command.call_args.args[0].graph, "example")
 
     def test_limit_must_be_positive(self):
         with self.assertRaises(argparse.ArgumentTypeError):
