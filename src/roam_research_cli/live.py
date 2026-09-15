@@ -5,6 +5,7 @@ from __future__ import annotations
 import json
 import os
 import re
+import socket
 import subprocess
 import urllib.error
 import urllib.request
@@ -32,11 +33,33 @@ class Hit:
     recency: int
 
 
-def _port() -> int:
+def api_port() -> int:
     try:
         return int(json.loads(PORT_FILE.read_text())["port"])
     except (OSError, ValueError, KeyError, TypeError):
         return 3333
+
+
+def desktop_running(timeout: float = 0.5) -> bool:
+    """Whether Roam Desktop's local API is accepting connections."""
+    try:
+        with socket.create_connection(("127.0.0.1", api_port()), timeout=timeout):
+            return True
+    except OSError:
+        return False
+
+
+def launch_desktop() -> bool:
+    """Ask macOS to start Roam Desktop in the background."""
+    try:
+        subprocess.Popen(
+            ["open", "-g", "roam://"],
+            stdout=subprocess.DEVNULL,
+            stderr=subprocess.DEVNULL,
+        )
+    except OSError:
+        return False
+    return True
 
 
 def load_token(graph: str) -> str | None:
@@ -52,16 +75,23 @@ def load_token(graph: str) -> str | None:
     return None
 
 
-def call(graph: str, action: str, args: list, timeout: float = DEFAULT_TIMEOUT):
-    token = load_token(graph)
+def call(
+    graph: str,
+    action: str,
+    args: list,
+    timeout: float = DEFAULT_TIMEOUT,
+    token: str | None = None,
+):
+    if token is None:
+        token = load_token(graph)
     if token is None:
         raise LiveUnavailable(
-            "no local API token; create a read-only token in Roam Settings → "
-            f"Graph → Local API Tokens and configure it in {TOKENS_FILE}"
+            f"no local API token for graph '{graph}' in {TOKENS_FILE}; "
+            "run `rr setup` to connect one"
         )
 
     request = urllib.request.Request(
-        f"http://127.0.0.1:{_port()}/api/{quote(graph, safe='')}",
+        f"http://127.0.0.1:{api_port()}/api/{quote(graph, safe='')}",
         data=json.dumps(
             {
                 "action": action,
@@ -92,18 +122,35 @@ def call(graph: str, action: str, args: list, timeout: float = DEFAULT_TIMEOUT):
         ConnectionError,
         json.JSONDecodeError,
     ) as error:
-        subprocess.Popen(
-            ["open", "-g", "roam://"],
-            stdout=subprocess.DEVNULL,
-            stderr=subprocess.DEVNULL,
+        hint = (
+            "launching it now; retry shortly"
+            if launch_desktop()
+            else "could not launch it; open the app and retry"
         )
-        raise LiveUnavailable(
-            "Roam Desktop is not running (launching it now; retry shortly)"
-        ) from error
+        raise LiveUnavailable(f"Roam Desktop is not running ({hint})") from error
 
     if not data.get("success", False):
         raise LiveUnavailable(f"local API error: {data.get('error')}")
     return data.get("result")
+
+
+def check_token(graph: str, token: str, timeout: float = DEFAULT_TIMEOUT) -> None:
+    """Raise LiveUnavailable unless `token` can read `graph` over the local API."""
+    call(
+        graph,
+        "data.ai.search",
+        [
+            {
+                "query": "a",
+                "scope": "all",
+                "offset": 0,
+                "limit": 1,
+                "includePath": False,
+            }
+        ],
+        timeout=timeout,
+        token=token,
+    )
 
 
 _ROAM_TAG = re.compile(r"\s*<roam[^>]*/>")
